@@ -38,19 +38,15 @@
             analyser.fftSize = 2048;
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Float32Array(bufferLength);
-            const timeDataArray = new Uint8Array(2048);
 
             source.connect(analyser).connect(audioContext.destination);
             analyser.getFloatFrequencyData(dataArray)
-            analyser.getByteTimeDomainData(timeDataArray)
 
 
             function updateChart() {
                 requestAnimationFrame(updateChart);
                 analyser.getFloatFrequencyData(dataArray);
-                analyser.getByteTimeDomainData(timeDataArray)
 
-                console.log(timeDataArray)
                 finalArray = formatDataArrayToPlot(freqVector, dataArray);
                 chart.data.datasets[0].data = finalArray;
                 chart.update();
