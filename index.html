@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My tuner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+</head>
+<body>
+    <button id="start-button">Start</button>
+    <canvas id="chart" class="w-full bg-gray-300">
+    </canvas>
+    <script>
+        const startButton = document.getElementById('start-button');
+
+        startButton.addEventListener(
+            "click",
+            () => {
+                getAudioDeviceStream()
+            }
+        )
+
+        function getAudioDeviceStream() {
+            navigator.mediaDevices
+                .getUserMedia({ video: false, audio: true })
+                .then((stream) => {
+                    bindAudioStreamToAudioContext(stream)
+                })
+                .catch((err) => {
+                    console.error(`you got an error: ${err}`);
+                });
+            }
+        
+        function bindAudioStreamToAudioContext(stream) {
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Float32Array(bufferLength);
+            const timeDataArray = new Uint8Array(2048);
+
+            source.connect(analyser).connect(audioContext.destination);
+            analyser.getFloatFrequencyData(dataArray)
+            analyser.getByteTimeDomainData(timeDataArray)
+
+
+            function updateChart() {
+                requestAnimationFrame(updateChart);
+                analyser.getFloatFrequencyData(dataArray);
+                analyser.getByteTimeDomainData(timeDataArray)
+
+                console.log(timeDataArray)
+                finalArray = formatDataArrayToPlot(freqVector, dataArray);
+                chart.data.datasets[0].data = finalArray;
+                chart.update();
+            }
+
+            freqVector = createFreqVector(2048, 48000);
+            finalArray = formatDataArrayToPlot(freqVector, dataArray);
+            chart = createChart(finalArray);
+            updateChart()
+
+        }
+
+        const formatLogSticks = function(value, index, ticks) {
+            switch (value) {
+                case 20:
+                    return 20;
+                case 40:
+                    return 40;
+                case 60:
+                    return 60;
+                case 100:
+                    return 100;
+                case 200:
+                    return 200;
+                case 400:
+                    return 400;
+                case 1000:
+                    return 1+' k';
+                case 2000:
+                    return 2+' k';
+                case 4000:
+                    return 4+' k';
+                case 6000:
+                    return 6+' k';
+                case 10000:
+                    return 10+' k';
+                case 20000:
+                    return 20+' k';
+                default:
+                    return '';
+                }
+            }
+
+        function createChart(finalArray) {
+            let chart = new Chart("chart", {
+            type: "line",
+            data: {
+                datasets: [{
+                data: finalArray,
+                }]
+            },
+            options: {
+                legend: {
+                display: false
+                },
+                responsive: true,
+                scales: {
+                    yAxes: [{
+                    display: true,
+                    ticks: {
+                        max: 0,
+                        min: -90,
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Amplitude (dB)'
+                    }
+                    }],
+                    xAxes: [{
+                    display: true,
+                    type: 'logarithmic',
+                    ticks: {
+                        max: 20000,
+                        min: 20,
+                        callback: formatLogSticks
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Frequência (Hz)'
+                    }
+                    }]
+                }
+                }
+            });
+
+            return chart;
+        }
+
+        function createFreqVector(fftsize, samplerate) {
+            const stepFreq = samplerate/fftsize;
+            const maxFreq = samplerate/2;
+
+            let vec = [];
+
+            for (let aux = 0; aux < maxFreq; aux += stepFreq) {
+            vec.push(aux); 
+            }
+
+            return vec;
+        }
+
+        function formatDataArrayToPlot(xAxis, yAxis) {
+            let finalArray = [];
+
+            xAxis.forEach((element, index) => {
+            finalArray.push({x:element,y:yAxis[index]})
+            })
+
+            return finalArray;
+        }
+
+    </script>
+</body>
+</html>
